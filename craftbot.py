@@ -14,7 +14,6 @@ try:
 except Exception, e:
     print ('Loading settings.json failed: %s' % e)
 
-
 def thread(f):
     def run(*k, **kw):
         t = threading.Thread(target=f, args=k, kwargs=kw)
@@ -51,22 +50,26 @@ class CraftBot(object):
             'P' : self.handle_position,
             'N' : self.handle_nick,
             'D' : self.handle_disconnect,
-            'S' : self.handle_sign
+            'S' : self.handle_sign,
+            'R' : self.handle_redraw
         }
         self.players = {}
         self.world = World()
         self.id = None
         self.queue = Queue()
+        self.handler_queue = Queue()
         self.chunk_keys = {}
 
 
     # Commands the player can do
     def talk(self, text):
         self.queue.put('T,%s\n' % text)
-    def add_block(self, x,y,z, type):
-        self.queue.put('B,%d,%d,%d,%d\n' % (x,y,z,type))
+    def add_block(self, x,y,z, type, check=True):
+        existing_block = self.get_block(x,y,z)
+        if not check or not existing_block:
+            self.queue.put('B,%d,%d,%d,%d\n' % (x,y,z,type))
     def remove_block(self, x,y,z):
-        self.add_block(x,y,z,0)        
+        self.queue.put('B,%d,%d,%d,%d\n' % (x,y,z,0))   
     def get_block(self,x,y,z):
         p,q = chunked(x),chunked(z)
         if (p,q) not in self.world.cache:
@@ -132,10 +135,11 @@ class CraftBot(object):
         if args:
             cmd = args[0]
             handler = self.handlers.get(cmd, self.handle_unhandled)
-            handler(*args)
+            callback, args = handler(*args)
+            self.handler_queue.put((callback,args))
 
     def handle_talk(self, *args):
-        return self.on_talk(args[1])
+        return self.on_talk, (args[1],)
 
     def handle_position(self, *args):
         id = int(args[1])
@@ -144,8 +148,7 @@ class CraftBot(object):
             player = self.players.get(id, Player(id=id))
             player.position = (x,y,z,rx,ry)
             self.players[id] = player
-
-        self.on_position(player)
+        return self.on_position, (player,)
 
     def handle_nick(self, *args):
         id = int(args[1])
@@ -154,7 +157,7 @@ class CraftBot(object):
             player = self.players.get(id, Player(id=id))
             player.nick = nick
             self.players[id] = player
-        self.on_nick(player)
+        return self.on_nick, (player,)
 
     def handle_you(self, *args):
         id = int(args[1])
@@ -163,29 +166,39 @@ class CraftBot(object):
             self.id = id
             player = self.players.get(id, Player(id=id))            
             player.position = position
-        self.on_you(id, position)
+        return self.on_you, (id,position)
 
     def handle_block(self, *args):
         p,q,x,y,z,type = map(int, args[1:])
         chunk = self.world.get_chunk(p,q)
         chunk[x,y,z] = type
-        self.on_block(x,y,z,type)
+        return self.on_block, (x,y,z,type)
 
     def handle_sign(self, *args):
         p,q,x,y,z,face = map(int, args[1:7])
         text = args[7]
-        self.on_sign(x,y,z,face,text)
+        return self.on_sign, (x,y,z,face,text)
 
     def handle_key(self, *args):
         p,q,key = map(int, args[1:])
         self.chunk_keys[(p,q)] = key
+        return self.on_key, (p,q,key)
 
     def handle_chunk(self, *args):
-        pass
+        p,q = map(int, args[1:])
+        self.chunk_keys[(p,q)] = 0
+        return self.on_chunk, (p,q)
+
     def handle_disconnect(self, *args):
-        pass
+        return self.on_disconnect, (int(args[1]),)
+
     def handle_unhandled(self, *args):
         print "Unhandled command: %s" % (str(args),)
+        return self.on_unhandled, []
+
+    def handle_redraw(self, *args):
+        p,q = map(int, args[1:])
+        return self.on_redraw, (p,q)
 
     def on_talk(self, text):
         pass
@@ -201,10 +214,30 @@ class CraftBot(object):
         pass
     def on_sign(self, x,y,z,face,text):
         pass
+    def on_key(self, p,q,key):
+        pass
+    def on_unhandled(self):
+        pass
+    def on_chunk(self, p, q):
+        pass
+    def on_redraw(self, p, q):
+        pass
+
+    @thread
+    def handler_loop(self):
+        while True:
+            try:
+                handler, args = self.handler_queue.get(False)
+                handler(*args)
+            except Empty:
+                pass
+            except Exception, e:
+                print "Exception in player handler: ", e
 
     def run(self):
         self.connect()
         self.authenticate(CREDENTIALS['USERNAME'], CREDENTIALS['IDENTITY_TOKEN'])
+        self.handler_loop()
         while True:
             readers, writers, errorers = select.select([self.socket], [self.socket], [self.socket], 60)
             # Deal with errors first

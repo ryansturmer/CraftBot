@@ -24,7 +24,7 @@ def dll_create_world(p, q):
     return result
 
 class World(object):
-    def __init__(self, seed=None, cache_size=64):
+    def __init__(self, seed=None, cache_size=512):
         self.seed = seed
         self.cache = OrderedDict()
         self.cache_size = cache_size
