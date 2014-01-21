@@ -72,12 +72,20 @@ def polyline(points, closed=False):
 
     return retval
 
-def neighbors(x,y,z):
-    surface_neighbors = [(x+1,y,z), (x-1,y,z), (x,y+1,z), (x,y-1,z), (x,y,z+1),(x,y,z-1)]
-    edge_neighbors = [(x+1,y+1,z),(x+1,y-1,z),(x-1,y+1,z),(x-1,y-1,z), 
+def neighbors(x,y,z, xz=False, xy=False, yz=False):
+    n = [(x+1,y,z), (x-1,y,z), (x,y+1,z), (x,y-1,z), (x,y,z+1),(x,y,z-1),
+                        (x+1,y+1,z),(x+1,y-1,z),(x-1,y+1,z),(x-1,y-1,z), 
                        (x+1,y,z+1),(x+1,y,z-1),(x-1,y,z+1),(x-1,y,z-1),
                        (x,y+1,z+1),(x,y+1,z-1),(x,y-1,z+1),(x,y-1,z-1)]
-    return surface_neighbors + edge_neighbors
+    if(xz):
+        return [(px,py,pz) for (px,py,pz) in n if py == y]
+    if(xy):
+        return [(px,py,pz) for (px,py,pz) in n if pz == z]
+    if(yz):
+        return [(px,py,pz) for (px,py,pz) in n if px == x]
+    
+    return n
+
 class MakerBot(CraftBot):
 
     def on_you(self, id, position):
@@ -86,7 +94,7 @@ class MakerBot(CraftBot):
         self.walls = []
         self.blockflood = set()
 
-    def flood(self, x,y,z):
+    def flood(self, x,y,z,xz=False,xy=False,yz=False):
         block_type = self.get_block(x,y,z)
         if block_type == 0:
             return set()
@@ -95,7 +103,7 @@ class MakerBot(CraftBot):
         while stack:
             point = stack.pop()
             fill_blocks.add(point)
-            n = [x for x in neighbors(*point) if (x not in fill_blocks) and (self.get_block(*x) == block_type)]
+            n = [x for x in neighbors(*point, xz=xz,yz=yz,xy=xy) if (x not in fill_blocks) and (self.get_block(*x) == block_type)]
             stack.extend(n)
 
         print "flooding %d blocks" % len(fill_blocks)
@@ -118,6 +126,8 @@ class MakerBot(CraftBot):
                     x,y,z = self.find_ground(x,200,z)
                     self.talk('moving player to %d,%d' % (x,z))
                     self.move_player(x,y+2,z)        
+
+                    
     def on_sign(self, x,y,z,face,text):
         print "SIGN: %s,%s,%s,%s,%s" % (x,y,z,face,text)
         args = text.lower().split()
@@ -197,6 +207,13 @@ class MakerBot(CraftBot):
                 self.remove_block(x,y,z)
                 self.add_block(x,y,z,self.material, check=False)
 
+        elif cmd == 'fillxz':
+            self.remove_sign(x,y,z,face)
+            blocks = self.flood(x,y,z, xz=True)
+            for x,y,z in blocks:
+                self.remove_block(x,y,z)
+                self.add_block(x,y,z,self.material, check=False)
+
         elif cmd == 'material':
             self.remove_sign(x,y,z,face)
             self.talk('is setting material to %d' % block_type)
@@ -249,6 +266,7 @@ class MakerBot(CraftBot):
                 return x,y,z
 
 
+import sys
 
-bot = MakerBot(host='michaelfogleman.com')
+bot = MakerBot(host=sys.argv[1])
 bot.run()

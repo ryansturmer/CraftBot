@@ -14,6 +14,65 @@ try:
 except Exception, e:
     print ('Loading settings.json failed: %s' % e)
 
+MATERIALS = {   0: 'EMPTY', 
+                1: 'GRASS', 
+                2: 'SAND', 
+                3: 'STONE', 
+                4: 'BRICK', 
+                5: 'WOOD', 
+                6: 'CEMENT', 
+                7: 'DIRT', 
+                8: 'PLANK', 
+                9: 'SNOW', 
+                10: 'GLASS', 
+                11: 'COBBLE', 
+                12: 'LIGHT_STONE', 
+                13: 'DARK_STONE', 
+                14: 'CHEST', 
+                15: 'LEAVES', 
+                16: 'CLOUD', 
+                17: 'TALL_GRASS',
+                18: 'YELLOW_FLOWER', 
+                19: 'RED_FLOWER', 
+                20: 'PURPLE_FLOWER', 
+                21: 'SUN_FLOWER', 
+                22: 'WHITE_FLOWER', 
+                23: 'BLUE_FLOWER', 
+                32: 'COLOR_00', 
+                33: 'COLOR_01', 
+                34: 'COLOR_02', 
+                35: 'COLOR_03', 
+                36: 'COLOR_04', 
+                37: 'COLOR_05', 
+                38: 'COLOR_06', 
+                39: 'COLOR_07', 
+                40: 'COLOR_08', 
+                41: 'COLOR_09', 
+                42: 'COLOR_10', 
+                43: 'COLOR_11', 
+                44: 'COLOR_12', 
+                45: 'COLOR_13', 
+                46: 'COLOR_14', 
+                47: 'COLOR_15', 
+                48: 'COLOR_16', 
+                49: 'COLOR_17', 
+                50: 'COLOR_18', 
+                51: 'COLOR_19', 
+                52: 'COLOR_20', 
+                53: 'COLOR_21', 
+                54: 'COLOR_22', 
+                55: 'COLOR_23', 
+                56: 'COLOR_24', 
+                57: 'COLOR_25', 
+                58: 'COLOR_26', 
+                59: 'COLOR_27', 
+                60: 'COLOR_28', 
+                61: 'COLOR_29', 
+                62: 'COLOR_30', 
+                63: 'COLOR_31'}
+
+PLANTS = dict([(x,MATERIALS[x]) for x in range(17,24)])
+
 def thread(f):
     def run(*k, **kw):
         t = threading.Thread(target=f, args=k, kwargs=kw)
@@ -74,6 +133,7 @@ class CraftBot(object):
         p,q = chunked(x),chunked(z)
         if (p,q) not in self.world.cache:
             self.request_chunk(p,q)
+            '''
             self.request_chunk(p-1,q)
             self.request_chunk(p+1,q)
             self.request_chunk(p,q-1)
@@ -82,6 +142,7 @@ class CraftBot(object):
             self.request_chunk(p+1,q+1)
             self.request_chunk(p-1,q+1)
             self.request_chunk(p-1,q-1)
+            '''
             while (p,q) not in self.chunk_keys:
                 pass
         return self.world.get_chunk(p,q).get((x,y,z),0)
@@ -102,6 +163,7 @@ class CraftBot(object):
                 return player
             return self.players[nickname]
     def request_chunk(self, p,q):
+        print "requesting chunk"
         key = self.chunk_keys.get((p,q),0)
         self.queue.put('C,%d,%d,%d\n' % (p,q,key))
 
