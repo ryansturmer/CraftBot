@@ -73,6 +73,33 @@ MATERIALS = {   0: 'EMPTY',
 
 PLANTS = dict([(x,MATERIALS[x]) for x in range(17,24)])
 
+class TwoWayDict(dict):
+    def __init__(self, d={}):
+        super(TwoWayDict, self).__init__()
+        for key, value in d.items():
+            self[key] = value
+    def __setitem__(self, key, value):
+        if key in self:
+            del self[key]
+        if value in self:
+            del self[value]
+        dict.__setitem__(self, key, value)
+        dict.__setitem__(self, value, key)
+
+    def __delitem__(self, key):
+        dict.__delitem__(self, self[key])
+        dict.__delitem__(self, key)
+
+    def __len__(self):
+        return int(dict.__len__(self) / 2)
+
+MATERIALS = TwoWayDict(MATERIALS)
+PLANTS = TwoWayDict(PLANTS) 
+
+def material(x):
+    return x if isinstance(x,int) else MATERIALS[x]
+
+
 def thread(f):
     def run(*k, **kw):
         t = threading.Thread(target=f, args=k, kwargs=kw)

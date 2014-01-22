@@ -219,6 +219,36 @@ class MakerBot(CraftBot):
             self.talk('is setting material to %d' % block_type)
             self.material = block_type
 
+        elif cmd == 'test':
+            self.remove_sign(x,y,z,face)
+            self.talk(face)
+
+        elif cmd == 'excavate':
+            try:
+                radius = int(args[1])
+                depth = int(args[2])
+            except:
+                return
+
+            self.remove_sign(x,y,z,face)
+            blocks = set()
+            if face == 6:
+                for i in range(depth):
+                    blocks.update(sphere(x,y+i,z,5,fill=True,fy=True))
+            elif face in (2,3):
+                s = {2:1,3:-1}
+                for i in range(depth):
+                    blocks.update(sphere(x,y,z+i*s[face],radius,fill=True,fz=True))
+            elif face in (0,1):
+                s = {1:1,0:-1}
+                for i in range(depth):
+                    blocks.update(sphere(x+i*s[face],y,z,radius,fill=True,fx=True))
+
+            self.talk('is cuttin %s blocks DEAL WITH IT' % len(blocks))
+            for x,y,z in blocks:
+                self.remove_block(x,y,z)
+                #self.add_block(x,y,z,self.material, check=False)
+
     def do_sphere(self, x,y,z, type, r, fill=False):
             blocks = sphere(x,y,z,r,fill=fill)
             if type != 0:

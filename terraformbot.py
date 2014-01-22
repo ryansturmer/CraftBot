@@ -1,4 +1,4 @@
-from craftbot import CraftBot, PLANTS, MATERIALS
+from craftbot import CraftBot, PLANTS, MATERIALS, material
 from numpy import array,round as around
 import math
 
@@ -15,11 +15,31 @@ OFFSETS = [
 
 CRAFT_USER = 'ryansturmer'
 
+# Take a material mapping and turn it all to integers
+def make_terrain(mapping):
+    return dict(map((lambda (x,y) : (material(x),material(y))), mapping.items()))
+
 def dist(a,b):
     return math.sqrt((b[0]-a[0])**2 + (b[1]-a[1])**2)
 
 def xzdist(a,b):
     return dist((a[0],a[2]),(b[0],b[2]))
+
+
+VOLCANO = make_terrain({'GRASS' : 'COLOR_09',
+         'TALL_GRASS' : 'COLOR_11',
+         'RED_FLOWER' : 'EMPTY',
+         'BLUE_FLOWER' : 'EMPTY',
+         'YELLOW_FLOWER' : 'EMPTY',
+         'PURPLE_FLOWER' : 'EMPTY',
+         'SUN_FLOWER' : 'EMPTY',
+         'SAND' : 'COLOR_11',
+         'DIRT': 'STONE',
+         'LEAVES': 'EMPTY',
+         'WOOD' : 'COLOR_16',
+         'STONE' : 'COLOR_09',
+         'COBBLE' : 'COLOR_09',
+         'CEMENT' : 'COLOR_09'})
 
 class TerraformBot(CraftBot):
 
@@ -132,10 +152,23 @@ class TerraformBot(CraftBot):
             self.remove_sign(x,y,z,face)
             radius = int(args[1])
             self.do_terraform(x,y,z,radius,{1:9,7:60,2:61,17:0,18:22,19:22,20:22,21:22,23:22,15:60})
-        if cmd == 'lake':
+        elif cmd == 'lake':
             self.remove_sign(x,y,z,face)
             radius = int(args[1])
             self.do_terraform(x,y,z,radius,{1:7,2:56,5:0,15:0,19:18,20:18,21:18,22:18,23:18})
+        elif cmd == 'paint':
+            self.remove_sign(x,y,z,face)
+            radius = int(args[1])
+            keys = MATERIALS.keys()
+            values = [self.material]*len(keys)
+            d = dict(zip(keys,values))
+            for key in PLANTS:
+                d[key] = 0
+            self.do_terraform(x,y,z,radius,d)
+        elif cmd == 'volcano':
+            self.remove_sign(x,y,z,face)
+            radius = int(args[1])
+            self.do_terraform(x,y,z,radius,VOLCANO)            
         elif cmd == 'fillxz':
             self.remove_sign(x,y,z,face)
             self.do_fillxz(x,y,z)
