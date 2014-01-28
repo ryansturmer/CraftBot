@@ -86,6 +86,7 @@ def neighbors(x,y,z, xz=False, xy=False, yz=False):
     
     return n
 
+
 class MakerBot(CraftBot):
 
     def on_you(self, id, position):
@@ -94,16 +95,16 @@ class MakerBot(CraftBot):
         self.walls = []
         self.blockflood = set()
 
-    def flood(self, x,y,z,xz=False,xy=False,yz=False):
+    def flood(self, x,y,z,type,xz=False,xy=False,yz=False):
         block_type = self.get_block(x,y,z)
-        if block_type == 0:
+        if block_type != type:
             return set()
         fill_blocks = set()
         stack = [(x,y,z)]
         while stack:
             point = stack.pop()
             fill_blocks.add(point)
-            n = [x for x in neighbors(*point, xz=xz,yz=yz,xy=xy) if (x not in fill_blocks) and (self.get_block(*x) == block_type)]
+            n = [x for x in neighbors(*point, xz=xz,yz=yz,xy=xy) if (x not in fill_blocks) and (self.get_block(*x) == type)]
             stack.extend(n)
 
         print "flooding %d blocks" % len(fill_blocks)
@@ -195,31 +196,38 @@ class MakerBot(CraftBot):
             self.remove_sign(x,y,z,face)
             block_type = self.get_block(x,y,z)
             self.talk('is destroying a structure of block type %s' % block_type)
-            blocks = self.flood(x,y,z)
+            blocks = self.flood(x,y,z,block_type)
             for b in blocks:
                 self.remove_block(*b)
 
         elif cmd == 'fill':
             print "filling up!"
             self.remove_sign(x,y,z,face)
-            blocks = self.flood(x,y,z)
+            block_type = self.get_block(x,y,z)
+            blocks = self.flood(x,y,z,block_type)
             for x,y,z in blocks:
                 self.remove_block(x,y,z)
                 self.add_block(x,y,z,self.material, check=False)
 
         elif cmd == 'fillxz':
             self.remove_sign(x,y,z,face)
-            blocks = self.flood(x,y,z, xz=True)
+            block_type = self.get_block(x,y,z)
+            blocks = self.flood(x,y,z, block_type, xz=True)
             for x,y,z in blocks:
                 self.remove_block(x,y,z)
                 self.add_block(x,y,z,self.material, check=False)
+
+        elif cmd == 'floor':
+            blocks = self.flood(x,y+1,z,0,xz=True)
+            for x,y,z in blocks:
+                self.add_block(x,y,z,self.material)
 
         elif cmd == 'material':
             self.remove_sign(x,y,z,face)
             self.talk('is setting material to %d' % block_type)
             self.material = block_type
 
-        elif cmd == 'test':
+        elif cmd == 'face':
             self.remove_sign(x,y,z,face)
             self.talk(face)
 
